@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlas Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        .voice-active {
+            color: #ef4444 !important;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .follow-up {
+            background: rgba(79, 70, 229, 0.05);
+            padding: 12px;
+            border-radius: 12px;
+            margin-top: 10px;
+            font-size: 0.85rem;
+            text-align: center;
+            border: 1px dashed #e2e8f0;
+        }
+
+        .follow-up-btns {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .follow-up-btns button {
+            padding: 4px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: white;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: 0.2s;
+        }
+
+        .follow-up-btns button:hover {
+            background: #f8fafc;
+            border-color: #4f46e5;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .history-item:hover {
+            background: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .history-item span {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .del-btn {
+            opacity: 0;
+            color: #ef4444;
+            padding: 2px 6px;
+            font-weight: 700;
+            transition: 0.2s;
+        }
+
+        .history-item:hover .del-btn {
+            opacity: 1;
+        }
+        .typing-dots { display: flex; gap: 4px; padding: 10px; width: fit-content; background: #e2e8f0; border-radius: 12px; margin-bottom: 10px;}
+        .typing-dots span { width: 6px; height: 6px; background: #64748b; border-radius: 50%; animation: bounce 1.5s infinite; }
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+
+        .menu-btn { cursor: pointer; padding: 2px 5px; opacity: 0; transition: 0.2s; position:relative; z-index:2; border-radius:4px;}
+        .menu-btn:hover { background: #e2e8f0; }
+        .history-item:hover .menu-btn { opacity: 1; }
+        .dropdown { position: relative; display: inline-block; }
+        .dropdown-content { display: none; position: absolute; right: 0; top: 100%; background-color: #ffffff; min-width: 120px; box-shadow: 0px 8px 16px rgba(0,0,0,0.15); z-index: 10; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }
+        .dropdown-content button { color: #333; padding: 10px 12px; width: 100%; border: none; background: none; text-align: left; cursor: pointer; font-size: 0.85rem;}
+        .dropdown-content button:hover { background-color: #f8fafc; }
+        
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
+        .modal-content { background: white; margin: 15% auto; padding: 30px; border-radius: 16px; width: 320px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        .modal-content input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 8px; border: 1px solid var(--border-color); box-sizing: border-box; }
+        .modal-btns { display: flex; gap: 10px; justify-content: center; }
+        .modal-btns button { flex: 1; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .btn-save { background: #4f46e5; color: white; }
+        .btn-close { background: #f1f5f9; color: #475569; }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+
+<body>
+
+    {% if auth_mode == 'login' %}
+    <!-- Login/Signup Section -->
+    <div class="app-wrapper"
+        style="justify-content: center; align-items: center; width: 400px; height: auto; padding: 40px; margin: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+        <div style="width: 100%; text-align: center;">
+            <h2 id="auth-title" style="margin-bottom: 24px; font-weight: 700;">Atlas Login</h2>
+            <div id="auth-error"
+                style="color: #ef4444; background: #fee2e2; padding: 10px; border-radius: 8px; margin-bottom: 16px; font-size: 0.85rem; display: none; border: 1px solid #fecaca;">
+            </div>
+
+            <div style="display:flex; justify-content:center; gap:10px; margin-bottom: 20px;">
+                <button type="button" onclick="setAuthType('email', this)" class="auth-type-btn" style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--border-color); background:white; cursor:pointer; font-size:0.85rem; font-weight:600;">✉️ Mail</button>
+                <button type="button" onclick="setAuthType('phone', this)" class="auth-type-btn" style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--border-color); background:white; cursor:pointer; font-size:0.85rem; font-weight:600;">📱 Phone</button>
+                <button type="button" onclick="setAuthType('username', this)" class="auth-type-btn" style="flex:1; padding:8px; border-radius:8px; border:1px solid #4f46e5; color:#4f46e5; background:#eef2ff; cursor:pointer; font-size:0.85rem; font-weight:600;">👤 Username</button>
+            </div>
+
+            <input type="text" id="username" placeholder="Username" autocomplete="username"
+                style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); margin-bottom: 12px; background: var(--input-bg); color: var(--text-color); box-sizing:border-box;">
+
+            <div style="position: relative; margin-bottom: 24px;">
+                <input type="password" id="password" placeholder="Password" autocomplete="current-password"
+                    style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-color); box-sizing:border-box;">
+                <span onclick="togglePassword()"
+                    style="position: absolute; right: 12px; top: 12px; cursor: pointer; opacity: 0.6;"
+                    id="pass-icon">👁️</span>
+            </div>
+
+            <button type="button" onclick="handleAuth()" id="auth-btn"
+                style="width: 100%; padding: 14px; border-radius: 12px; background: #4f46e5; color: white; border: none; font-weight: 600; cursor: pointer; margin-bottom: 16px; transition: 0.2s;">Login</button>
+
+            <p id="toggle-p" style="font-size: 0.9rem; color: #6b7280;">
+                Don't have an account? <a href="javascript:void(0)" onclick="toggleAuthMode('signup')"
+                    style="color: #4f46e5; font-weight: 600; text-decoration: none;">Sign Up</a>
+            </p>
+        </div>
+    </div>
+    {% else %}
+    <!-- Chat Dashboard -->
+    <div class="app-wrapper">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div style="padding-bottom: 20px; border-bottom: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div id="display-name" style="font-weight: 700; font-size: 1.1rem; margin-bottom: 4px;">Hi {{ username }}</div>
+                    <a href="/logout"
+                        style="font-size: 0.75rem; color: #ef4444; text-decoration: none; font-weight: 600;">Logout 🚪</a>
+                </div>
+                <button onclick="document.getElementById('profile-modal').style.display='block'" title="Profile Settings" style="background:none; border:none; cursor:pointer; font-size:1.2rem; transition: transform 0.2s;">⚙️</button>
+            </div>
+
+            <button class="new-chat-btn" onclick="alert('Group Chat Feature Coming Soon!')" style="margin-top: 15px; background: #8b5cf6; border: none;">
+                <span>👥</span> Group Chat
+            </button>
+            <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 8px;">
+                <div
+                    style="font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                    AI Language</div>
+                <div style="display: flex; gap: 5px;">
+                    <button onclick="quickReply('Respond in English 🇺🇸')"
+                        style="flex: 1; padding: 6px; font-size: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background: white; cursor: pointer;">Eng
+                        🇺🇸</button>
+                    <button onclick="quickReply('Respond in Telugu 🇮🇳')"
+                        style="flex: 1; padding: 6px; font-size: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background: white; cursor: pointer;">Tel
+                        🇮🇳</button>
+                    <button onclick="quickReply('Respond in Hindi 🇮🇳')"
+                        style="flex: 1; padding: 6px; font-size: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background: white; cursor: pointer;">Hin
+                        🇮🇳</button>
+                </div>
+            </div>
+
+            <button class="new-chat-btn" onclick="newChat()" style="margin-top: 15px;">
+                <span>+</span> New Chat
+            </button>
+
+            <div class="history-section">
+                <div class="history-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    Recent Chats
+                    <a href="javascript:void(0)" onclick="clearAllHistory()"
+                        style="font-size: 0.65rem; color: #ef4444; text-decoration: none; font-weight: 600;">Clear
+                        All</a>
+                </div>
+                <input type="text" id="history-search" placeholder="🔍 Search history..." onkeyup="filterHistory()" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--border-color); margin:10px 0; font-size:0.8rem; box-sizing:border-box;">
+                <div id="history-container"></div>
+            </div>
+
+            <button onclick="quickReply('Talk to Human 🎧')"
+                style="width: 100%; padding: 12px; border-radius: 12px; background: #fee2e2; border: 1px solid #fecaca; color: #ef4444; font-weight: 600; cursor: pointer; margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <span>🎧</span> Agent Handoff
+            </button>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="chat-main">
+            <div class="chat-header">
+                <h2>Atlas Support</h2>
+                <div class="header-actions" style="position:relative;">
+                    <button onclick="toggleTopMenu(event)" title="Options" style="font-size:1.4rem; background:none; border:none; cursor:pointer; color:var(--text-color);">⋮</button>
+                    <div id="top-menu" class="dropdown-content" style="right:0; top:40px; min-width: 160px; text-align:left;">
+                        <button onclick="shareChat()">🔗 Share Link</button>
+                        <button onclick="exportChat('txt')">📄 Download TXT</button>
+                        <button onclick="window.print()">🖨️ Download PDF</button>
+                        <button onclick="toggleVoiceOutput()" id="voice-toggle-btn">🔊 Voice: On</button>
+                        <button onclick="toggleDarkMode()">🌓 Toggle Theme</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="chat" class="chat-box"></div>
+
+            <div id="typing" class="typing" style="background:none; padding:0; display:none;"><div class="typing-dots"><span></span><span></span><span></span></div></div>
+
+            <div id="status-display" style="font-size: 0.75rem; padding: 5px 24px; color: #6b7280; height: 20px;"></div>
+
+            <div class="quick-replies">
+                <button onclick="quickReply('Track Order 📦')">Order 📦</button>
+                <button onclick="quickReply('Refund Status 💰')">Refund 💰</button>
+                <button onclick="quickReply('Talk to Human 🎧')">Talk to Human 🎧</button>
+            </div>
+
+            <div id="feedback-area"
+                style="display:none; padding: 20px; text-align: center; border-top: 1px solid var(--border-color);">
+                <p style="margin-bottom: 10px; font-weight: 600;">How was your experience?</p>
+                <div style="display: flex; justify-content: center; gap: 15px;">
+                    <button onclick="submitFeedback(5)"
+                        style="background:none; border:none; font-size: 1.5rem; cursor: pointer;">⭐⭐⭐⭐⭐</button>
+                    <button onclick="submitFeedback(1)"
+                        style="background:none; border:none; font-size: 1.5rem; cursor: pointer;">⭐</button>
+                </div>
+            </div>
+
+            <div class="chat-input-wrapper">
+                <div class="chat-input">
+                    <div class="dropdown" style="display: flex; align-items: center;">
+                        <button class="action-btn" onclick="toggleAttachMenu(event)" title="Attach">➕</button>
+                        <div id="attach-menu" class="dropdown-content" style="bottom:45px; left:0; top:auto; min-width:140px; padding:5px 0;">
+                            <button onclick="triggerUpload()">📎 Upload File</button>
+                            <button onclick="triggerImageUpload()">🖼️ Upload Image</button>
+                            <button onclick="triggerCamera()">📷 Take Photo</button>
+                        </div>
+                    </div>
+                    <button class="action-btn" onclick="startVoiceInput()" id="mic-btn"
+                        title="Speak to Atlas">🎙️</button>
+
+                    <input type="file" id="file-input" style="display:none" onchange="handleFileUpload()">
+                    <input type="file" id="image-input" accept="image/*" style="display:none" onchange="handleImageUpload()">
+                    <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none" onchange="handleCameraUpload()">
+
+                    <input type="text" id="msg" placeholder="Type or Speak in Any Language..." autocomplete="off"
+                        onkeypress="handleKey(event)" />
+
+                    <button id="send-btn" onclick="lastInputWasVoice=false; send()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <script>
+        let chatHistory = [];
+        let authMode = 'login';
+        let voiceOutputEnabled = true;
+        let lastInputWasVoice = false;
+        let recognition;
+
+        // Initialize Speech Recognition
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRec();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = () => {
+                document.getElementById('mic-btn').classList.add('voice-active');
+                document.getElementById('status-display').innerText = "Listening...";
+            };
+
+            recognition.onresult = (event) => {
+                const text = event.results[0][0].transcript;
+                document.getElementById('msg').value = text;
+                lastInputWasVoice = true;
+                send();
+            };
+
+            recognition.onend = () => {
+                document.getElementById('mic-btn').classList.remove('voice-active');
+                document.getElementById('status-display').innerText = "";
+            };
+
+            recognition.onerror = (e) => {
+                console.error("Speech Recognition Error:", e);
+                document.getElementById('mic-btn').classList.remove('voice-active');
+                document.getElementById('status-display').innerText = "Mic Error. Try again.";
+            };
+        }
+
+        function startVoiceInput() {
+            if (!recognition) return alert("Speech recognition not supported in your browser.");
+            recognition.start();
+        }
+
+        function speakResponse(text) {
+            if (!voiceOutputEnabled || !text || !lastInputWasVoice) return;
+            // Clean emojis and bullets for better speech
+            const cleanText = text.replace(/[•\d\.\-*]/g, '').replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}]/gu, '').trim();
+            if (!cleanText) return;
+
+            window.speechSynthesis.cancel(); // Stop current speaking
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+
+            // Detect language
+            if (/[అ-హ]/.test(text)) utterance.lang = 'te-IN';
+            else if (/[अ-ह]/.test(text)) utterance.lang = 'hi-IN';
+            else utterance.lang = 'en-US';
+
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function toggleVoiceOutput() {
+            voiceOutputEnabled = !voiceOutputEnabled;
+            document.getElementById('voice-toggle-btn').innerText = `🔊 Voice: ${voiceOutputEnabled ? 'On' : 'Off'}`;
+            if (!voiceOutputEnabled) window.speechSynthesis.cancel();
+        }
+
+        function setAuthType(type, btn) {
+            document.querySelectorAll('.auth-type-btn').forEach(el => {
+                el.style.border = '1px solid var(--border-color)';
+                el.style.color = '#333';
+                el.style.background = 'white';
+            });
+            btn.style.border = '1px solid #4f46e5';
+            btn.style.color = '#4f46e5';
+            btn.style.background = '#eef2ff';
+            
+            const input = document.getElementById('username');
+            if (type === 'email') input.placeholder = 'Email Address';
+            else if (type === 'phone') input.placeholder = 'Phone Number';
+            else input.placeholder = 'Username';
+            
+            input.focus();
+        }
+
+        function togglePassword() {
+            const p = document.getElementById('password');
+            const i = document.getElementById('pass-icon');
+            if (p.type === 'password') { p.type = 'text'; i.innerText = '🙈'; }
+            else { p.type = 'password'; i.innerText = '👁️'; }
+        }
+
+        function toggleAuthMode(mode) {
+            authMode = mode;
+            document.getElementById('auth-title').innerText = mode === 'login' ? 'Atlas Login' : 'Atlas Sign Up';
+            document.getElementById('auth-btn').innerText = mode === 'login' ? 'Login' : 'Sign Up';
+            document.getElementById('toggle-p').innerHTML = mode === 'login' ?
+                'Don\'t have an account? <a href="javascript:void(0)" onclick="toggleAuthMode(\'signup\')" style="color: #4f46e5; font-weight: 600; text-decoration: none;">Sign Up</a>' :
+                'Already have an account? <a href="javascript:void(0)" onclick="toggleAuthMode(\'login\')" style="color: #4f46e5; font-weight: 600; text-decoration: none;">Login</a>';
+        }
+
+        function handleAuth() {
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value.trim();
+            if (!u || !p) return alert("Please enter both username and password");
+            const btn = document.getElementById('auth-btn');
+            const originalText = authMode === 'login' ? 'Login' : 'Sign Up';
+            btn.innerText = 'Please wait...'; btn.disabled = true;
+            fetch(authMode === 'login' ? '/login' : '/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: u, password: p })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        if (authMode === 'signup') {
+                            authMode = 'login'; handleAuth();
+                        } else { window.location.href = "/"; }
+                    } else {
+                        btn.innerText = originalText; btn.disabled = false;
+                        const errDiv = document.getElementById('auth-error');
+                        errDiv.innerText = data.message || "Something went wrong";
+                        errDiv.style.display = 'block';
+                    }
+                });
+        }
+
+        function loadHistory() {
+            fetch("/history")
+                .then(res => res.json())
+                .then(data => {
+                    const container = document.getElementById("history-container");
+                    if (!container) return;
+                    if (!data || data.length === 0) {
+                        container.innerHTML = '<div style="font-size: 0.8rem; padding: 10px; opacity: 0.5;">No history.</div>';
+                        return;
+                    }
+                    container.innerHTML = data.map(item => {
+                        let customName = localStorage.getItem('chat_name_' + item.id) || item.title || "Recent Chat";
+                        let pinned = localStorage.getItem('chat_pin_' + item.id) === 'true' ? '📌 ' : '';
+                        return `
+                        <div style="display:flex; flex-direction:column; margin-bottom:5px;">
+                            <div class="history-item" onclick="quickReply('${customName.replace(/'/g, "\\'")}')" id="chat-item-${item.id}">
+                                <span style="flex:1; overflow:hidden; text-overflow:ellipsis;">${pinned}${customName}</span>
+                                <div class="menu-btn" onclick="event.stopPropagation(); toggleHistoryMenu(${item.id})" style="padding: 2px 8px; font-weight: bold; color: var(--text-color);">⋮</div>
+                            </div>
+                            <div id="hist-menu-${item.id}" class="hist-menu" style="display:none; background:#f8fafc; padding:8px; border-radius:8px; font-size:0.8rem; margin-top:2px; border: 1px solid #e2e8f0; justify-content:space-between; flex-wrap: wrap; gap: 5px;">
+                                <button onclick="renameChat(${item.id})" style="border:none;background:#e2e8f0;padding:5px 8px;border-radius:4px;cursor:pointer;flex:1;">✏️ Rename</button>
+                                <button onclick="pinChat(${item.id})" style="border:none;background:#e2e8f0;padding:5px 8px;border-radius:4px;cursor:pointer;flex:1;">📌 Pin</button>
+                                <button onclick="deleteHistoryItem(${item.id})" style="color:#ef4444; border:none;background:#fee2e2;padding:5px 8px;border-radius:4px;cursor:pointer;flex:1;">🗑️</button>
+                            </div>
+                        </div>
+                    `}).join('');
+                }).catch(e => console.error("History Load Error:", e));
+        }
+
+        function deleteHistoryItem(id) {
+            if (!confirm("Delete this chat?")) return;
+            fetch("/delete_chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: id })
+            }).then(() => loadHistory());
+        }
+
+        function clearAllHistory() {
+            if (!confirm("Clear ALL chat history? This cannot be undone.")) return;
+            fetch("/clear_history", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" }
+            }).then(() => {
+                document.getElementById("chat").innerHTML = "";
+                loadHistory();
+            });
+        }
+
+        function send() {
+            let msg = document.getElementById("msg").value.trim();
+            if (!msg) return;
+            appendMessage("You", msg);
+            document.getElementById("msg").value = "";
+            document.getElementById("typing").style.display = "block";
+
+            fetch("/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: msg })
+            })
+                .then(res => {
+                    if (res.status === 401) window.location.reload();
+                    return res.json().catch(() => ({ reply: "Error parsing server response." }));
+                })
+                .then(data => {
+                    document.getElementById("typing").style.display = "none";
+                    if (data && data.reply) {
+                        const replyText = data.reply;
+                        appendMessage("Bot", replyText);
+                        try {
+                            speakResponse(replyText);
+                        } catch(e) { console.error("Speech Error:", e); }
+                    } else {
+                        appendMessage("Bot", "I'm sorry, I couldn't generate a response. 😊");
+                    }
+                    loadHistory();
+
+                    // Clean UI, no bulky follow-ups
+                })
+                .catch(err => {
+                    console.error("Chat Error:", err);
+                    document.getElementById("typing").style.display = "none";
+                    appendMessage("Bot", "Oops! I encountered an error. 🌐 (If you just restarted the server, please wait a moment!)");
+                });
+        }
+
+
+
+        function appendMessage(sender, text) {
+            const chat = document.getElementById("chat");
+            if (!chat) return;
+            const greeting = chat.querySelector('.center-greeting');
+            if(greeting) greeting.remove();
+
+            const isBot = sender.toLowerCase().includes("bot");
+            const msgDiv = document.createElement("div");
+            msgDiv.classList.add("message", isBot ? "bot" : "you");
+            const displayText = text || "No information received.";
+            
+            if (isBot) {
+                msgDiv.innerHTML = `
+                    <div class="message-content">${displayText}</div>
+                    <div class="msg-actions" style="margin-top: 8px; display: flex; gap: 10px; opacity: 0.7;">
+                        <button onclick="likeMessage(this)" title="Helpful" style="background:none; border:none; cursor:pointer; font-size:1rem; padding:0; filter: grayscale(1);">👍</button>
+                        <button onclick="dislikeMessage(this)" title="Not Helpful" style="background:none; border:none; cursor:pointer; font-size:1rem; padding:0; filter: grayscale(1);">👎</button>
+                        <button onclick="copyMessage(this)" title="Copy Text" style="background:none; border:none; cursor:pointer; font-size:1.1rem; padding:0; filter: grayscale(1);">📋</button>
+                    </div>
+                `;
+            } else {
+                msgDiv.innerHTML = `<span>${displayText}</span>`;
+            }
+            chat.appendChild(msgDiv);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function likeMessage(btn) {
+            btn.style.filter = 'grayscale(0)';
+            if(btn.nextElementSibling) btn.nextElementSibling.style.filter = 'grayscale(1)';
+        }
+        function dislikeMessage(btn) {
+            btn.style.filter = 'grayscale(0)';
+            if(btn.previousElementSibling) btn.previousElementSibling.style.filter = 'grayscale(1)';
+            setTimeout(() => quickReply("Talk to Human Agent 🎧"), 800);
+        }
+        function copyMessage(btn) {
+            const text = btn.parentElement.previousElementSibling.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const original = btn.innerText;
+                btn.innerText = "✅";
+                setTimeout(() => btn.innerText = original, 2000);
+            });
+        }
+
+        function shareChat() {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                const btn = document.querySelector('button[onclick="shareChat()"]');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = "✅ Copied!";
+                setTimeout(() => btn.innerHTML = originalText, 2000);
+            });
+        }
+
+        function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
+        function handleKey(e) { if (e.key === 'Enter') { lastInputWasVoice = false; send(); } }
+        function quickReply(text) { document.getElementById("msg").value = text; lastInputWasVoice = false; send(); }
+        function newChat() { 
+            document.getElementById("chat").innerHTML = ""; 
+            loadHistory(); 
+            const nick = localStorage.getItem('user_nickname') || '{{ username }}';
+            showCenterGreeting(nick);
+        }
+        function showCenterGreeting(nick) {
+            const chat = document.getElementById("chat");
+            if (!chat) return;
+            chat.innerHTML = `
+                <div class="center-greeting" style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; text-align:center; opacity:0; animation: fadeIn 0.8s forwards;">
+                    <h1 style="font-size:3rem; font-weight:900; color:#1e293b; margin-bottom:15px; letter-spacing:-1px;">Hello, ${nick}</h1>
+                    <p style="font-size:1.4rem; font-weight:600; color:#64748b; max-width:400px; line-height:1.4;">I'm Atlas. How can I help you today? ✨</p>
+                </div>
+            `;
+        }
+        function triggerUpload() { document.getElementById("file-input").click(); }
+        function handleFileUpload() {
+            const f = document.getElementById("file-input").files[0];
+            if (f) { appendMessage("You", `Uploaded: ${f.name} 📎`); setTimeout(() => appendMessage("Bot", "Document received! How can I help with this? 😊"), 1000); }
+        }
+        function triggerImageUpload() { document.getElementById("image-input").click(); }
+        function handleImageUpload() {
+            const f = document.getElementById("image-input").files[0];
+            if (f) { appendMessage("You", `Uploaded Image: ${f.name} 🖼️`); setTimeout(() => appendMessage("Bot", "Image received! What would you like to know about it? 😊"), 1000); }
+        }
+        function triggerCamera() { document.getElementById("camera-input").click(); }
+        function handleCameraUpload() {
+            const f = document.getElementById("camera-input").files[0];
+            if (f) { appendMessage("You", `Captured Photo 📷`); setTimeout(() => appendMessage("Bot", "Photo received! I can analyze this for you. 😊"), 1000); }
+        }
+
+        window.onload = () => { if (document.getElementById("chat")) loadHistory(); }
+    </script>
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color:#334155;">Profile Settings</h3>
+            <input type="text" id="nickname-input" placeholder="Enter Nickname" value="{{ username }}">
+            <div class="modal-btns">
+                <button class="btn-close" onclick="document.getElementById('profile-modal').style.display='none'">Close</button>
+                <button class="btn-save" onclick="saveProfile()">Save</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        function toggleHistoryMenu(id) {
+            const menu = document.getElementById('hist-menu-' + id);
+            const isVisible = menu.style.display === 'flex';
+            document.querySelectorAll('.hist-menu').forEach(el => el.style.display = 'none');
+            if(!isVisible) menu.style.display = 'flex';
+        }
+
+        function toggleTopMenu(event) {
+            event.stopPropagation();
+            document.querySelectorAll('.dropdown-content').forEach(el => el.style.display = 'none');
+            document.getElementById('top-menu').style.display = 'block';
+        }
+        function toggleAttachMenu(event) {
+            event.stopPropagation();
+            document.querySelectorAll('.dropdown-content').forEach(el => el.style.display = 'none');
+            document.getElementById('attach-menu').style.display = 'block';
+        }
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.dropdown-content').forEach(el => el.style.display = 'none');
+        });
+        function filterHistory() {
+            const query = document.getElementById("history-search").value.toLowerCase();
+            const items = document.querySelectorAll(".history-item");
+            items.forEach(item => {
+                const text = item.querySelector('span').innerText.toLowerCase();
+                item.style.display = text.includes(query) ? "flex" : "none";
+            });
+        }
+        function renameChat(id) {
+            const newName = prompt("Rename chat to:");
+            if(newName) {
+                localStorage.setItem('chat_name_' + id, newName);
+                loadHistory();
+            }
+        }
+        function pinChat(id) {
+            const current = localStorage.getItem('chat_pin_' + id);
+            localStorage.setItem('chat_pin_' + id, current === 'true' ? 'false' : 'true');
+            loadHistory();
+        }
+        function saveProfile() {
+            const nick = document.getElementById('nickname-input').value.trim();
+            if(nick) {
+                localStorage.setItem('user_nickname', nick);
+                document.getElementById('display-name').innerText = "Hi " + nick;
+            }
+            document.getElementById('profile-modal').style.display='none';
+        }
+        window.addEventListener('load', () => {
+            let nick = localStorage.getItem('user_nickname');
+            const username = '{{ username }}';
+            if (!nick && username) nick = username;
+            
+            if(nick && document.getElementById('display-name')) {
+                document.getElementById('display-name').innerText = "Hi " + nick;
+                document.getElementById('nickname-input').value = nick;
+            }
+            if(document.getElementById('chat')) {
+                setTimeout(() => {
+                    if(document.getElementById('chat').innerHTML.trim() === '') {
+                        showCenterGreeting(nick || username);
+                    }
+                }, 100);
+            }
+        });
+    </script>
+</body>
+
+</html>
